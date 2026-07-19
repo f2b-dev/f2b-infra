@@ -1,0 +1,25 @@
+# 构建上下文：f2b-infra 的父目录（与 f2b-spec / f2b-sandbox 同级）
+FROM node:22-bookworm-slim
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /workspace
+COPY f2b-spec /workspace/f2b-spec
+COPY f2b-sandbox /workspace/f2b-sandbox
+
+WORKDIR /workspace/f2b-spec
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /workspace/f2b-sandbox
+# 保留 tsx 等 devDependency（start 脚本依赖 tsx）
+RUN pnpm install --frozen-lockfile
+
+ENV F2B_SANDBOX_BACKEND=fake \
+    DATABASE_URL=file:/data/f2b-sandbox.db \
+    PORT=8787 \
+    HOST=0.0.0.0
+
+VOLUME ["/data"]
+EXPOSE 8787
+
+CMD ["pnpm", "start"]

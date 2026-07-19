@@ -1,21 +1,75 @@
 # f2b-infra
 
-灵境云 / F2B 组织仓库骨架。详见组织设计与 [todo](https://github.com/f2b-dev)。
+灵境云 **部署与本地全栈编排**（无业务逻辑）。
 
-| 仓 | 角色 |
-|----|------|
-| f2b-web | 官网 + 控制台壳 + BFF + 产品插件 |
-| f2b-sdk-js | 官方 TypeScript SDK |
-| f2b-sdk-python | 官方 Python SDK |
-| f2b-mcp-gateway | MCP 网关 |
-| f2b-tunnel | 隧道代理 |
-| f2b-infra | 部署 / compose |
-| f2b-docs | 开发者文档 |
+## 目录约定
 
-**本仓（f2b-infra）**：待从迁移计划填充实现。当前仅占位，便于 org 可见与协作。
+与本仓**同级**克隆：
 
-- 契约：https://github.com/f2b-dev/f2b-spec
-- 沙箱服务：https://github.com/f2b-dev/f2b-sandbox
-- 组织：https://github.com/f2b-dev
+```text
+revocloud/   # 或任意工作区父目录
+  f2b-infra/     ← 本仓
+  f2b-spec/
+  f2b-sandbox/
+  f2b-web/
+  f2b-sdk-js/    # 可选，SDK 不进 compose
+```
+
+## 方式 A：Docker Compose（推荐联调镜像）
+
+构建上下文为**父目录**（需同级 `f2b-spec` / `f2b-sandbox` / `f2b-web`）。建议复制忽略规则：
+
+```bash
+cd f2b-infra
+cp parent.dockerignore ../.dockerignore   # 首次
+cp .env.example .env                     # 可选
+docker compose up --build
+```
+
+| 服务 | 地址 |
+|------|------|
+| 官网 / 控制台 | http://localhost:3000 |
+| 沙箱 API | http://localhost:8787/healthz |
+
+BFF 容器内通过 `F2B_SANDBOX_URL=http://sandbox:8787` 访问沙箱服务。  
+数据卷：`sandbox-data` → SQLite。
+
+冒烟（compose 已 up）：
+
+```bash
+./scripts/smoke.sh
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+## 方式 B：宿主机双进程（不构建镜像）
+
+需 Node **≥ 22**（`node:sqlite`）与 pnpm：
+
+```bash
+./scripts/dev-host.sh
+```
+
+同样打开 :3000 / :8787。Ctrl+C 结束两个进程。
+
+## 环境变量
+
+见 [`.env.example`](./.env.example)。**勿提交**真实 `F2B_CUBE_API_TOKEN` 等密钥。
+
+## 非目标
+
+- 不写沙箱/控制台业务代码  
+- 1.0 前不做复杂多集群 Helm 全集；compose 本地优先  
+- npm 发布与生产密钥托管不在本仓
+
+## 相关
+
+- https://github.com/f2b-dev/f2b-sandbox  
+- https://github.com/f2b-dev/f2b-web  
+- https://github.com/f2b-dev/f2b-spec  
 
 Apache-2.0

@@ -1,0 +1,8 @@
+**/node_modules
+**/.git
+**/data
+**/.next
+**/*.db
+**/*.db-*
+**/.env.local
+**/dist
