@@ -65,7 +65,7 @@
 | 组件 | 说明 |
 |------|------|
 | f2b-mcp-gateway | stdio MCP，按需起 |
-| f2b-tunnel | V1 可选 |
+| f2b-tunnel | 预览隧道：默认 all-in-one 常驻本机 `:8790`；BFF `/api/tunnels` |
 | 独立 Postgres | MVP 用 SQLite 卷即可；企业可外置后换 `DATABASE_URL` |
 | 多节点调度 / 跨机迁移 | 非本阶段 |
 
@@ -79,12 +79,14 @@
 |------|------|------|------|------|
 | **13200** | HTTP | f2b-web | 开发直接暴露；生产建议只经 443 | 控制台 + BFF |
 | **13287** | HTTP | f2b-sandbox | 可选：仅内网或经网关 | 产品 `/v1`、`/healthz` |
+| **8790** | HTTP | f2b-tunnel | 默认仅本机；预览 URL 可另设 `F2B_TUNNEL_PUBLIC_BASE` | `/v1/tunnels`、`/t/{id}/` |
 | **80 / 443** | HTTP(S) | 反代（nginx/caddy 等） | 生产推荐 | 反代到 13200；API 可同域 `/` 或子域 |
 
 宿主机映射可用环境变量覆盖（compose）：
 
 - `F2B_WEB_PORT`（默认 13200）
 - `F2B_SANDBOX_PORT`（默认 13287）
+- `F2B_TUNNEL_PORT` / `F2B_TUNNEL_URL`（默认 8790）
 
 ### 3.2 仅本机 / 内网（数据面）
 
@@ -116,6 +118,7 @@
   env                     # 环境变量（权限 600；含 token 时勿世界可读）
   web.env                 # 可选拆分
   sandbox.env
+  tunnel.env
 
 /var/lib/f2b/
   sandbox/
@@ -126,6 +129,7 @@
 /var/log/f2b/
   web/
   sandbox/
+  tunnel/
 ```
 
 ### 4.2 Docker Compose（当前仓库默认）

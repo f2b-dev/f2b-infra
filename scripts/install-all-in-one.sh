@@ -58,7 +58,7 @@ if ! command -v pnpm >/dev/null 2>&1; then
   corepack prepare pnpm@9.15.0 --activate
 fi
 
-mkdir -p "$F2B_ROOT" "$DATA_DIR" "$LOG_DIR/sandbox" "$LOG_DIR/web" "$ENV_DIR"
+mkdir -p "$F2B_ROOT" "$DATA_DIR" "$LOG_DIR/sandbox" "$LOG_DIR/web" "$LOG_DIR/tunnel" "$ENV_DIR"
 chmod 700 "$ENV_DIR"
 
 clone_or_pull() {
@@ -77,7 +77,7 @@ clone_or_pull() {
   fi
 }
 
-for repo in f2b-spec f2b-sandbox f2b-web; do
+for repo in f2b-spec f2b-sandbox f2b-web f2b-tunnel; do
   clone_or_pull "$repo"
 done
 
@@ -125,6 +125,7 @@ if [[ ! -f "$ENV_DIR/web.env" ]]; then
 PORT=13200
 HOSTNAME=0.0.0.0
 F2B_SANDBOX_URL=http://127.0.0.1:13287
+F2B_TUNNEL_URL=http://127.0.0.1:8790
 EOF
   if [[ -n "${F2B_SANDBOX_API_KEY:-}" ]]; then
     echo "F2B_SANDBOX_API_KEY=${F2B_SANDBOX_API_KEY}" >>"$ENV_DIR/web.env"
@@ -139,15 +140,33 @@ else
   # 迁移默认端口 3000→13200，上游 8787→13287
   upsert_env "$ENV_DIR/web.env" PORT "13200"
   upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_URL "http://127.0.0.1:13287"
+  upsert_env "$ENV_DIR/web.env" F2B_TUNNEL_URL "http://127.0.0.1:8790"
   upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_API_KEY "${F2B_SANDBOX_API_KEY:-}"
   if [[ -n "${F2B_ADMIN_TOKEN:-}" ]]; then
     upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_ADMIN_TOKEN "$F2B_ADMIN_TOKEN"
   fi
 fi
 
+# tunnel env：预览代理；默认仅本机，publicBase 可经 F2B_TUNNEL_PUBLIC_BASE 覆盖
+if [[ ! -f "$ENV_DIR/tunnel.env" ]]; then
+  cat >"$ENV_DIR/tunnel.env" <<EOF
+PORT=8790
+HOST=${F2B_TUNNEL_HOST:-127.0.0.1}
+F2B_TUNNEL_PUBLIC_BASE=${F2B_TUNNEL_PUBLIC_BASE:-http://127.0.0.1:8790}
+EOF
+  chmod 600 "$ENV_DIR/tunnel.env"
+  echo "==> 写入 $ENV_DIR/tunnel.env"
+else
+  echo "==> 保留已有 $ENV_DIR/tunnel.env"
+  upsert_env "$ENV_DIR/tunnel.env" PORT "8790"
+  upsert_env "$ENV_DIR/tunnel.env" HOST "${F2B_TUNNEL_HOST:-}"
+  upsert_env "$ENV_DIR/tunnel.env" F2B_TUNNEL_PUBLIC_BASE "${F2B_TUNNEL_PUBLIC_BASE:-}"
+fi
+
 echo "==> pnpm install + build"
 (cd "$F2B_ROOT/f2b-spec" && pnpm install --frozen-lockfile || pnpm install)
 (cd "$F2B_ROOT/f2b-sandbox" && pnpm install --frozen-lockfile || pnpm install)
+(cd "$F2B_ROOT/f2b-tunnel" && pnpm install --frozen-lockfile || pnpm install)
 (cd "$F2B_ROOT/f2b-web" && pnpm install --frozen-lockfile || pnpm install)
 # web 生产启动需 build
 (cd "$F2B_ROOT/f2b-web" && \
@@ -174,11 +193,31 @@ StandardError=append:${LOG_DIR}/sandbox/service.log
 WantedBy=multi-user.target
 EOF
 
+mkdir -p "${LOG_DIR}/tunnel"
+cat >/etc/systemd/system/f2b-tunnel.service <<EOF
+[Unit]
+Description=F2B Tunnel preview proxy
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=${F2B_ROOT}/f2b-tunnel
+EnvironmentFile=${ENV_DIR}/tunnel.env
+ExecStart=$(command -v pnpm) start
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:${LOG_DIR}/tunnel/service.log
+StandardError=append:${LOG_DIR}/tunnel/service.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 cat >/etc/systemd/system/f2b-web.service <<EOF
 [Unit]
 Description=F2B Web console + BFF
-After=network.target f2b-sandbox.service
-Wants=f2b-sandbox.service
+After=network.target f2b-sandbox.service f2b-tunnel.service
+Wants=f2b-sandbox.service f2b-tunnel.service
 
 [Service]
 Type=simple
@@ -195,38 +234,46 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable f2b-sandbox f2b-web
+systemctl enable f2b-sandbox f2b-tunnel f2b-web
 systemctl restart f2b-sandbox
+systemctl restart f2b-tunnel
 systemctl restart f2b-web
 
 echo "==> 健康检查"
 ok_sandbox=0
+ok_tunnel=0
 ok_web=0
 for i in $(seq 1 60); do
   if [[ "$ok_sandbox" -eq 0 ]] && curl -sf http://127.0.0.1:13287/healthz >/dev/null; then
     ok_sandbox=1
   fi
+  if [[ "$ok_tunnel" -eq 0 ]] && curl -sf http://127.0.0.1:8790/healthz >/dev/null; then
+    ok_tunnel=1
+  fi
   if [[ "$ok_web" -eq 0 ]] && curl -sf -o /dev/null http://127.0.0.1:13200/; then
     ok_web=1
   fi
-  if [[ "$ok_sandbox" -eq 1 && "$ok_web" -eq 1 ]]; then
+  if [[ "$ok_sandbox" -eq 1 && "$ok_tunnel" -eq 1 && "$ok_web" -eq 1 ]]; then
     break
   fi
   sleep 1
 done
 curl -sS http://127.0.0.1:13287/healthz || true
 echo
+curl -sS http://127.0.0.1:8790/healthz || true
+echo
 curl -sS -o /dev/null -w "web=%{http_code}\n" http://127.0.0.1:13200/ || true
-if [[ "$ok_sandbox" -ne 1 || "$ok_web" -ne 1 ]]; then
-  echo "WARN: 健康检查未在 60s 内全部就绪 (sandbox=$ok_sandbox web=$ok_web)" >&2
-  systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,50p' || true
+if [[ "$ok_sandbox" -ne 1 || "$ok_tunnel" -ne 1 || "$ok_web" -ne 1 ]]; then
+  echo "WARN: 健康检查未在 60s 内全部就绪 (sandbox=$ok_sandbox tunnel=$ok_tunnel web=$ok_web)" >&2
+  systemctl --no-pager --full status f2b-sandbox f2b-tunnel f2b-web | sed -n '1,60p' || true
 else
-  systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,40p' || true
+  systemctl --no-pager --full status f2b-sandbox f2b-tunnel f2b-web | sed -n '1,50p' || true
 fi
 
 echo ""
 echo "INSTALL_OK"
 echo "  控制台  http://<host>:13200"
 echo "  沙箱    http://127.0.0.1:13287/healthz（建议 HOST=127.0.0.1 不公网暴露）"
+echo "  隧道    http://127.0.0.1:8790/healthz（预览 /t/{id}/；BFF /api/tunnels）"
 echo "  约定    见 f2b-infra/docs/all-in-one.md"
 echo "  测试机  见 f2b-infra/docs/hk-test-host.md"
