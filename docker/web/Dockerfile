@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /workspace/f2b-web
 RUN pnpm install --frozen-lockfile
 
-ENV F2B_SANDBOX_URL=http://sandbox:8787 \
+ENV F2B_SANDBOX_URL=http://sandbox:13287 \
     NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @f2b/web build
 
@@ -25,11 +25,11 @@ COPY --from=build /workspace/f2b-spec /workspace/f2b-spec
 COPY --from=build /workspace/f2b-web /workspace/f2b-web
 
 ENV NODE_ENV=production \
-    F2B_SANDBOX_URL=http://sandbox:8787 \
-    PORT=3000 \
+    F2B_SANDBOX_URL=http://sandbox:13287 \
+    PORT=13200 \
     HOSTNAME=0.0.0.0 \
     NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /workspace/f2b-web
-EXPOSE 3000
+EXPOSE 13200
 CMD ["pnpm", "--filter", "@f2b/web", "start"]

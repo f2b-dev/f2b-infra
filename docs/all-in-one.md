@@ -15,10 +15,10 @@
   客户端 ──────────►│  [可选] 反代 :80/:443                         │
                     │       │                                      │
                     │       ▼                                      │
-                    │  f2b-web :3000   (UI + BFF)                  │
+                    │  f2b-web :13200   (UI + BFF)                  │
                     │       │ F2B_SANDBOX_URL                      │
                     │       ▼                                      │
-                    │  f2b-sandbox :8787  (产品 /v1 API)           │
+                    │  f2b-sandbox :13287  (产品 /v1 API)           │
                     │       │                                      │
                     │       ├─ Fake（无 KVM / 本地开发）              │
                     │       └─ CubeAPI（本机 loopback，仅服务端）     │
@@ -31,7 +31,7 @@
 |------|--------|--------|
 | **A. 开发 / CI / 低配演示** | 笔记本、无 KVM、**2–4G 试验机** | `F2B_SANDBOX_BACKEND=fake` |
 | **B. 单机真数据面** | 一台带 KVM 的云主机（建议 **≥8 GB** 再对外承诺并发） | 本机 Cube 栈 + `F2B_CUBE_API_URL=http://127.0.0.1:<cube-api>` |
-| **C. 企业入门** | 与 B 相同拓扑；**允许 4c/8G 低配**（并发 1–2）或 8c/16G 推荐档 | 同 B；公网仅 443→web，SDK 走 BFF 或仅内网 :8787；容量见 capacity 分档 |
+| **C. 企业入门** | 与 B 相同拓扑；**允许 4c/8G 低配**（并发 1–2）或 8c/16G 推荐档 | 同 B；公网仅 443→web，SDK 走 BFF 或仅内网 :13287；容量见 capacity 分档 |
 
 **禁止**：浏览器或客户端 SDK 配置 `CUBE_*` / `envdAccessToken`；CubeAPI 不对公网暴露。
 
@@ -77,14 +77,14 @@
 
 | 端口 | 协议 | 进程 | 公网 | 说明 |
 |------|------|------|------|------|
-| **3000** | HTTP | f2b-web | 开发直接暴露；生产建议只经 443 | 控制台 + BFF |
-| **8787** | HTTP | f2b-sandbox | 可选：仅内网或经网关 | 产品 `/v1`、`/healthz` |
-| **80 / 443** | HTTP(S) | 反代（nginx/caddy 等） | 生产推荐 | 反代到 3000；API 可同域 `/` 或子域 |
+| **13200** | HTTP | f2b-web | 开发直接暴露；生产建议只经 443 | 控制台 + BFF |
+| **13287** | HTTP | f2b-sandbox | 可选：仅内网或经网关 | 产品 `/v1`、`/healthz` |
+| **80 / 443** | HTTP(S) | 反代（nginx/caddy 等） | 生产推荐 | 反代到 13200；API 可同域 `/` 或子域 |
 
 宿主机映射可用环境变量覆盖（compose）：
 
-- `F2B_WEB_PORT`（默认 3000）
-- `F2B_SANDBOX_PORT`（默认 8787）
+- `F2B_WEB_PORT`（默认 13200）
+- `F2B_SANDBOX_PORT`（默认 13287）
 
 ### 3.2 仅本机 / 内网（数据面）
 
@@ -100,10 +100,10 @@
 | 放行 | 拒绝 / 不映射 |
 |------|----------------|
 | 443（或 80→跳转）→ web | CubeAPI 端口对 `0.0.0.0` |
-| 若 SDK 直连：仅受信网段 → 8787 | 任意 `CUBE_*` 管理端口公网 |
+| 若 SDK 直连：仅受信网段 → 13287 | 任意 `CUBE_*` 管理端口公网 |
 | SSH 仅运维网段 | 数据库文件目录的匿名共享 |
 
-`F2B_AUTH_MODE`：公网暴露 8787 时必须 `api_key` + `F2B_ADMIN_TOKEN`；纯 BFF 同机且 8787 不对公网时可用 `off`（仅本机 docker 网络）。
+`F2B_AUTH_MODE`：公网暴露 13287 时必须 `api_key` + `F2B_ADMIN_TOKEN`；纯 BFF 同机且 13287 不对公网时可用 `off`（仅本机 docker 网络）。
 
 ---
 
@@ -152,7 +152,7 @@
 
 | 变量 | 落在 | 说明 |
 |------|------|------|
-| `F2B_SANDBOX_URL` | **仅 web** | 指向本机或 compose 服务 `http://sandbox:8787` |
+| `F2B_SANDBOX_URL` | **仅 web** | 指向本机或 compose 服务 `http://sandbox:13287` |
 | `F2B_SANDBOX_BACKEND` | sandbox | `fake` 强制 Fake；有 Cube URL 且非 fake 则走真数据面 |
 | `F2B_CUBE_API_URL` / `F2B_CUBE_API_TOKEN` | **仅 sandbox** | 同机 loopback；兼容 `CUBE_API_*` |
 | `F2B_CUBE_ENVD_*` | 仅 sandbox | domain / port / 可选 `ENVD_BASE_URL` |
@@ -168,8 +168,8 @@
 
 ```bash
 # 控制面
-curl -sf http://127.0.0.1:8787/healthz
-curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/
+curl -sf http://127.0.0.1:13287/healthz
+curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:13200/
 
 # compose 已 up 时
 ./scripts/smoke.sh
@@ -184,7 +184,7 @@ curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/
 | 阶段 | 变化 | 不变 |
 |------|------|------|
 | 单机纵向 | 加 CPU/内存/磁盘；下调并发红线见 capacity 文档 | 端口角色、密钥边界 |
-| 拆数据面 | Cube 迁到第二台；`F2B_CUBE_API_URL` 改内网 IP | 客户端仍只打 web/8787 |
+| 拆数据面 | Cube 迁到第二台；`F2B_CUBE_API_URL` 改内网 IP | 客户端仍只打 web/13287 |
 | 多节点 | 上调度与多 Cubelet | 产品 `/v1` 与 SDK 不要求客户改代码 |
 
 ---

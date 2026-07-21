@@ -12,7 +12,7 @@
 #   F2B_SANDBOX_BACKEND=fake
 #   F2B_AUTH_MODE=off              # 仅新建 sandbox.env 时写入
 #   F2B_AUTH_MODE_SET=api_key     # 更新已有 sandbox.env 的 F2B_AUTH_MODE
-#   F2B_SANDBOX_HOST=127.0.0.1    # 建议生产/测试机绑定本机，不公网暴露 8787
+#   F2B_SANDBOX_HOST=127.0.0.1    # 建议生产/测试机绑定本机，不公网暴露 13287
 #   F2B_ADMIN_TOKEN=…             # sandbox 管理令牌；同步写入 web 的 F2B_SANDBOX_ADMIN_TOKEN
 #   F2B_SANDBOX_API_KEY=sk_live_… # BFF 访问上游产品 API（auth=api_key 时）
 set -euo pipefail
@@ -96,7 +96,7 @@ upsert_env() {
 
 if [[ ! -f "$ENV_DIR/sandbox.env" ]]; then
   cat >"$ENV_DIR/sandbox.env" <<EOF
-PORT=8787
+PORT=13287
 HOST=${F2B_SANDBOX_HOST:-0.0.0.0}
 F2B_SANDBOX_BACKEND=${F2B_SANDBOX_BACKEND}
 F2B_AUTH_MODE=${F2B_AUTH_MODE}
@@ -112,6 +112,8 @@ EOF
   echo "==> 写入 $ENV_DIR/sandbox.env"
 else
   echo "==> 保留已有 $ENV_DIR/sandbox.env"
+  # 迁移默认端口 8787→13287（项目专属）
+  upsert_env "$ENV_DIR/sandbox.env" PORT "13287"
   upsert_env "$ENV_DIR/sandbox.env" F2B_MAX_CONCURRENT_SANDBOXES "${F2B_MAX_CONCURRENT_SANDBOXES:-}"
   upsert_env "$ENV_DIR/sandbox.env" F2B_AUTH_MODE "${F2B_AUTH_MODE_SET:-}"
   upsert_env "$ENV_DIR/sandbox.env" HOST "${F2B_SANDBOX_HOST:-}"
@@ -120,9 +122,9 @@ fi
 
 if [[ ! -f "$ENV_DIR/web.env" ]]; then
   cat >"$ENV_DIR/web.env" <<EOF
-PORT=3000
+PORT=13200
 HOSTNAME=0.0.0.0
-F2B_SANDBOX_URL=http://127.0.0.1:8787
+F2B_SANDBOX_URL=http://127.0.0.1:13287
 EOF
   if [[ -n "${F2B_SANDBOX_API_KEY:-}" ]]; then
     echo "F2B_SANDBOX_API_KEY=${F2B_SANDBOX_API_KEY}" >>"$ENV_DIR/web.env"
@@ -134,6 +136,9 @@ EOF
   echo "==> 写入 $ENV_DIR/web.env"
 else
   echo "==> 保留已有 $ENV_DIR/web.env"
+  # 迁移默认端口 3000→13200，上游 8787→13287
+  upsert_env "$ENV_DIR/web.env" PORT "13200"
+  upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_URL "http://127.0.0.1:13287"
   upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_API_KEY "${F2B_SANDBOX_API_KEY:-}"
   if [[ -n "${F2B_ADMIN_TOKEN:-}" ]]; then
     upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_ADMIN_TOKEN "$F2B_ADMIN_TOKEN"
@@ -198,10 +203,10 @@ echo "==> 健康检查"
 ok_sandbox=0
 ok_web=0
 for i in $(seq 1 60); do
-  if [[ "$ok_sandbox" -eq 0 ]] && curl -sf http://127.0.0.1:8787/healthz >/dev/null; then
+  if [[ "$ok_sandbox" -eq 0 ]] && curl -sf http://127.0.0.1:13287/healthz >/dev/null; then
     ok_sandbox=1
   fi
-  if [[ "$ok_web" -eq 0 ]] && curl -sf -o /dev/null http://127.0.0.1:3000/; then
+  if [[ "$ok_web" -eq 0 ]] && curl -sf -o /dev/null http://127.0.0.1:13200/; then
     ok_web=1
   fi
   if [[ "$ok_sandbox" -eq 1 && "$ok_web" -eq 1 ]]; then
@@ -209,9 +214,9 @@ for i in $(seq 1 60); do
   fi
   sleep 1
 done
-curl -sS http://127.0.0.1:8787/healthz || true
+curl -sS http://127.0.0.1:13287/healthz || true
 echo
-curl -sS -o /dev/null -w "web=%{http_code}\n" http://127.0.0.1:3000/ || true
+curl -sS -o /dev/null -w "web=%{http_code}\n" http://127.0.0.1:13200/ || true
 if [[ "$ok_sandbox" -ne 1 || "$ok_web" -ne 1 ]]; then
   echo "WARN: 健康检查未在 60s 内全部就绪 (sandbox=$ok_sandbox web=$ok_web)" >&2
   systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,50p' || true
@@ -221,7 +226,7 @@ fi
 
 echo ""
 echo "INSTALL_OK"
-echo "  控制台  http://<host>:3000"
-echo "  沙箱    http://127.0.0.1:8787/healthz（建议 HOST=127.0.0.1 不公网暴露）"
+echo "  控制台  http://<host>:13200"
+echo "  沙箱    http://127.0.0.1:13287/healthz（建议 HOST=127.0.0.1 不公网暴露）"
 echo "  约定    见 f2b-infra/docs/all-in-one.md"
 echo "  测试机  见 f2b-infra/docs/hk-test-host.md"

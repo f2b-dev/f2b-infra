@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 对已启动的全栈做最小 HTTP 冒烟（BFF 路径）
 set -euo pipefail
-WEB="${F2B_WEB_URL:-http://127.0.0.1:3000}"
-SBX="${F2B_SANDBOX_URL:-http://127.0.0.1:8787}"
+WEB="${F2B_WEB_URL:-http://127.0.0.1:13200}"
+SBX="${F2B_SANDBOX_URL:-http://127.0.0.1:13287}"
 
 echo "health sandbox"
 curl -sf "$SBX/healthz" | head -c 200; echo

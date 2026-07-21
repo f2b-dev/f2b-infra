@@ -28,10 +28,10 @@ docker compose up --build
 
 | 服务 | 地址 |
 |------|------|
-| 官网 / 控制台 | http://localhost:3000 |
-| 沙箱 API | http://localhost:8787/healthz |
+| 官网 / 控制台 | http://localhost:13200 |
+| 沙箱 API | http://localhost:13287/healthz |
 
-BFF 容器内通过 `F2B_SANDBOX_URL=http://sandbox:8787` 访问沙箱服务。  
+BFF 容器内通过 `F2B_SANDBOX_URL=http://sandbox:13287` 访问沙箱服务。  
 数据卷：`sandbox-data` → SQLite。
 
 冒烟（compose 已 up）：
@@ -54,7 +54,7 @@ docker compose down
 ./scripts/dev-host.sh
 ```
 
-同样打开 :3000 / :8787。Ctrl+C 结束两个进程。
+同样打开 :13200 / :13287。Ctrl+C 结束两个进程。
 
 ## 方式 C：Linux 单机 systemd 安装（Fake 默认）
 
