@@ -61,10 +61,12 @@ clone_or_pull() {
   local name="$1"
   local dir="$F2B_ROOT/$name"
   if [[ -d "$dir/.git" ]]; then
-    echo "==> pull $name ($F2B_BRANCH)"
+    # 部署机：始终对齐 origin（shallow 易与本地历史分叉，ff-only 会挂）
+    echo "==> sync $name -> origin/$F2B_BRANCH"
     git -C "$dir" fetch --depth 1 origin "$F2B_BRANCH"
-    git -C "$dir" checkout "$F2B_BRANCH"
-    git -C "$dir" pull --ff-only origin "$F2B_BRANCH"
+    git -C "$dir" checkout -B "$F2B_BRANCH" "origin/$F2B_BRANCH"
+    git -C "$dir" reset --hard "origin/$F2B_BRANCH"
+    git -C "$dir" clean -fd
   else
     echo "==> clone $name"
     git clone --depth 1 --branch "$F2B_BRANCH" "$F2B_GIT_BASE/$name.git" "$dir"
@@ -91,6 +93,15 @@ EOF
   echo "==> 写入 $ENV_DIR/sandbox.env"
 else
   echo "==> 保留已有 $ENV_DIR/sandbox.env"
+  # 若调用方显式传入硬顶，则 upsert 到已有 env（不覆盖其它键）
+  if [[ -n "$F2B_MAX_CONCURRENT_SANDBOXES" ]]; then
+    if grep -q '^F2B_MAX_CONCURRENT_SANDBOXES=' "$ENV_DIR/sandbox.env"; then
+      sed -i "s/^F2B_MAX_CONCURRENT_SANDBOXES=.*/F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}/" "$ENV_DIR/sandbox.env"
+    else
+      echo "F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}" >>"$ENV_DIR/sandbox.env"
+    fi
+    echo "==> 更新 F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}"
+  fi
 fi
 
 if [[ ! -f "$ENV_DIR/web.env" ]]; then
