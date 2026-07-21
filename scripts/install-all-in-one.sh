@@ -10,7 +10,11 @@
 #   F2B_BRANCH=main
 #   F2B_MAX_CONCURRENT_SANDBOXES=2
 #   F2B_SANDBOX_BACKEND=fake
-#   F2B_AUTH_MODE=off
+#   F2B_AUTH_MODE=off              # 仅新建 sandbox.env 时写入
+#   F2B_AUTH_MODE_SET=api_key     # 更新已有 sandbox.env 的 F2B_AUTH_MODE
+#   F2B_SANDBOX_HOST=127.0.0.1    # 建议生产/测试机绑定本机，不公网暴露 8787
+#   F2B_ADMIN_TOKEN=…             # sandbox 管理令牌；同步写入 web 的 F2B_SANDBOX_ADMIN_TOKEN
+#   F2B_SANDBOX_API_KEY=sk_live_… # BFF 访问上游产品 API（auth=api_key 时）
 set -euo pipefail
 
 if [[ "$(id -u)" -ne 0 ]]; then
@@ -78,10 +82,22 @@ for repo in f2b-spec f2b-sandbox f2b-web; do
 done
 
 # sandbox env
+# 可选：调用方传入时 upsert 到已有 env
+upsert_env() {
+  local file="$1" key="$2" value="$3"
+  [[ -z "$value" ]] && return 0
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    echo "${key}=${value}" >>"$file"
+  fi
+  echo "==> 更新 ${file}: ${key}"
+}
+
 if [[ ! -f "$ENV_DIR/sandbox.env" ]]; then
   cat >"$ENV_DIR/sandbox.env" <<EOF
 PORT=8787
-HOST=0.0.0.0
+HOST=${F2B_SANDBOX_HOST:-0.0.0.0}
 F2B_SANDBOX_BACKEND=${F2B_SANDBOX_BACKEND}
 F2B_AUTH_MODE=${F2B_AUTH_MODE}
 DATABASE_URL=file:${DATA_DIR}/f2b-sandbox.db
@@ -89,19 +105,17 @@ EOF
   if [[ -n "$F2B_MAX_CONCURRENT_SANDBOXES" ]]; then
     echo "F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}" >>"$ENV_DIR/sandbox.env"
   fi
+  if [[ -n "${F2B_ADMIN_TOKEN:-}" ]]; then
+    echo "F2B_ADMIN_TOKEN=${F2B_ADMIN_TOKEN}" >>"$ENV_DIR/sandbox.env"
+  fi
   chmod 600 "$ENV_DIR/sandbox.env"
   echo "==> 写入 $ENV_DIR/sandbox.env"
 else
   echo "==> 保留已有 $ENV_DIR/sandbox.env"
-  # 若调用方显式传入硬顶，则 upsert 到已有 env（不覆盖其它键）
-  if [[ -n "$F2B_MAX_CONCURRENT_SANDBOXES" ]]; then
-    if grep -q '^F2B_MAX_CONCURRENT_SANDBOXES=' "$ENV_DIR/sandbox.env"; then
-      sed -i "s/^F2B_MAX_CONCURRENT_SANDBOXES=.*/F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}/" "$ENV_DIR/sandbox.env"
-    else
-      echo "F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}" >>"$ENV_DIR/sandbox.env"
-    fi
-    echo "==> 更新 F2B_MAX_CONCURRENT_SANDBOXES=${F2B_MAX_CONCURRENT_SANDBOXES}"
-  fi
+  upsert_env "$ENV_DIR/sandbox.env" F2B_MAX_CONCURRENT_SANDBOXES "${F2B_MAX_CONCURRENT_SANDBOXES:-}"
+  upsert_env "$ENV_DIR/sandbox.env" F2B_AUTH_MODE "${F2B_AUTH_MODE_SET:-}"
+  upsert_env "$ENV_DIR/sandbox.env" HOST "${F2B_SANDBOX_HOST:-}"
+  upsert_env "$ENV_DIR/sandbox.env" F2B_ADMIN_TOKEN "${F2B_ADMIN_TOKEN:-}"
 fi
 
 if [[ ! -f "$ENV_DIR/web.env" ]]; then
@@ -110,10 +124,20 @@ PORT=3000
 HOSTNAME=0.0.0.0
 F2B_SANDBOX_URL=http://127.0.0.1:8787
 EOF
+  if [[ -n "${F2B_SANDBOX_API_KEY:-}" ]]; then
+    echo "F2B_SANDBOX_API_KEY=${F2B_SANDBOX_API_KEY}" >>"$ENV_DIR/web.env"
+  fi
+  if [[ -n "${F2B_ADMIN_TOKEN:-}" ]]; then
+    echo "F2B_SANDBOX_ADMIN_TOKEN=${F2B_ADMIN_TOKEN}" >>"$ENV_DIR/web.env"
+  fi
   chmod 600 "$ENV_DIR/web.env"
   echo "==> 写入 $ENV_DIR/web.env"
 else
   echo "==> 保留已有 $ENV_DIR/web.env"
+  upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_API_KEY "${F2B_SANDBOX_API_KEY:-}"
+  if [[ -n "${F2B_ADMIN_TOKEN:-}" ]]; then
+    upsert_env "$ENV_DIR/web.env" F2B_SANDBOX_ADMIN_TOKEN "$F2B_ADMIN_TOKEN"
+  fi
 fi
 
 echo "==> pnpm install + build"
@@ -168,12 +192,19 @@ EOF
 systemctl daemon-reload
 systemctl enable f2b-sandbox f2b-web
 systemctl restart f2b-sandbox
-sleep 2
 systemctl restart f2b-web
 
 echo "==> 健康检查"
-for i in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:8787/healthz >/dev/null; then
+ok_sandbox=0
+ok_web=0
+for i in $(seq 1 60); do
+  if [[ "$ok_sandbox" -eq 0 ]] && curl -sf http://127.0.0.1:8787/healthz >/dev/null; then
+    ok_sandbox=1
+  fi
+  if [[ "$ok_web" -eq 0 ]] && curl -sf -o /dev/null http://127.0.0.1:3000/; then
+    ok_web=1
+  fi
+  if [[ "$ok_sandbox" -eq 1 && "$ok_web" -eq 1 ]]; then
     break
   fi
   sleep 1
@@ -181,11 +212,16 @@ done
 curl -sS http://127.0.0.1:8787/healthz || true
 echo
 curl -sS -o /dev/null -w "web=%{http_code}\n" http://127.0.0.1:3000/ || true
-systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,40p' || true
+if [[ "$ok_sandbox" -ne 1 || "$ok_web" -ne 1 ]]; then
+  echo "WARN: 健康检查未在 60s 内全部就绪 (sandbox=$ok_sandbox web=$ok_web)" >&2
+  systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,50p' || true
+else
+  systemctl --no-pager --full status f2b-sandbox f2b-web | sed -n '1,40p' || true
+fi
 
 echo ""
 echo "INSTALL_OK"
 echo "  控制台  http://<host>:3000"
-echo "  沙箱    http://<host>:8787/healthz"
+echo "  沙箱    http://127.0.0.1:8787/healthz（建议 HOST=127.0.0.1 不公网暴露）"
 echo "  约定    见 f2b-infra/docs/all-in-one.md"
 echo "  测试机  见 f2b-infra/docs/hk-test-host.md"

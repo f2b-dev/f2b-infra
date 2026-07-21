@@ -23,17 +23,18 @@
 | CPU 标志 vmx | 有（`egrep -c vmx` ≥ 1） |
 | nested | `Y` |
 | `systemd-detect-virt` | `kvm` |
-| 控制面 | `f2b-sandbox` / `f2b-web` **active**；`backend=fake`，`auth=off` |
+| 控制面 | `f2b-sandbox` / `f2b-web` **active**；`backend=fake` |
 | 健康 | `8787/healthz` ok · `3000` HTTP 200 |
-| 监听 | `22`、`80`（docker-proxy）、`3000`、`8787` |
-| UFW | OpenSSH + 80；**8787/3000 当前亦在 0.0.0.0**（测试便利，非生产） |
+| 并发硬顶 | `F2B_MAX_CONCURRENT_SANDBOXES=2`（healthz 回显 `maxConcurrentSandboxes`） |
+| 监听目标 | `22`、`3000` 可对公网；**`8787` 应仅 `127.0.0.1`**（BFF 本机回环） |
+| UFW | 至少 OpenSSH；生产勿放行 8787 |
 
 ## 端口
 
 | 端口 | 服务 | 说明 |
 |------|------|------|
-| 3000 | f2b-web | 控制台 + BFF |
-| 8787 | f2b-sandbox | `/v1`，当前 `F2B_AUTH_MODE=off`（测试） |
+| 3000 | f2b-web | 控制台 + BFF（对外入口） |
+| 8787 | f2b-sandbox | `/v1`；**仅 127.0.0.1**（`HOST=127.0.0.1`） |
 | 80 | 可选反代 / docker | 视本机容器而定 |
 
 本机冒烟：
@@ -78,9 +79,24 @@ systemctl restart f2b-sandbox f2b-web
 
 ## 安全（测试机）
 
-- 联调：`auth=off`，进程监听 `0.0.0.0`。  
-- **勿当生产**；公网暴露时至少：`F2B_AUTH_MODE=api_key`、8787 仅本机/内网、反代 + TLS。  
-- 无 Cube 管理密钥写入 env（Fake only）。
+最小加固（推荐当前默认）：
+
+```bash
+# 8787 只听本机；控制台仍走 :3000 BFF
+sudo F2B_SANDBOX_HOST=127.0.0.1 F2B_MAX_CONCURRENT_SANDBOXES=2 \
+  /opt/f2b/f2b-infra/scripts/install-all-in-one.sh
+# 或手改 /etc/f2b/sandbox.env 的 HOST=127.0.0.1 后 systemctl restart f2b-sandbox
+ss -lntp | grep 8787   # 应为 127.0.0.1:8787
+```
+
+进阶（SDK 公网直连 8787 时才需要；本机绑定后可不做）：
+
+1. `F2B_ADMIN_TOKEN` 写入 sandbox + web  
+2. `F2B_AUTH_MODE_SET=api_key`  
+3. 用 admin 创建 `sk_live_*`，写入 web 的 `F2B_SANDBOX_API_KEY`（BFF 注入，浏览器不持有）  
+4. 反代 + TLS 只暴露 443→3000  
+
+- **勿当生产**；无 Cube 管理密钥写入 env（Fake only）。
 
 ## 相关
 
