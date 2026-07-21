@@ -56,6 +56,17 @@ docker compose down
 
 同样打开 :3000 / :8787。Ctrl+C 结束两个进程。
 
+## 方式 C：Linux 单机 systemd 安装（Fake 默认）
+
+在一台 Linux 上克隆/更新代码、写 `/etc/f2b/*.env`、安装 unit：
+
+```bash
+# 需 root、Node ≥ 22、git、curl
+sudo F2B_MAX_CONCURRENT_SANDBOXES=2 ./scripts/install-all-in-one.sh
+```
+
+详情：[docs/all-in-one.md](./docs/all-in-one.md)、试验床 [docs/hk-test-host.md](./docs/hk-test-host.md)。
+
 ## 环境变量
 
 见 [`.env.example`](./.env.example)。**勿提交**真实 `F2B_CUBE_API_TOKEN` 等密钥。

@@ -53,9 +53,13 @@ journalctl -u f2b-sandbox -u f2b-web -n 50 --no-pager
 # 或 tail -f /var/log/f2b/*.log
 ```
 
-更新代码后：
+更新代码后（或本仓脚本，需 root）：
 
 ```bash
+# 推荐：与 install 脚本同源
+cd /opt/f2b/f2b-infra && git pull --ff-only && sudo ./scripts/install-all-in-one.sh
+
+# 或手工
 cd /opt/f2b
 for r in f2b-spec f2b-sandbox f2b-web; do git -C $r pull --ff-only; done
 cd f2b-spec && pnpm i --frozen-lockfile

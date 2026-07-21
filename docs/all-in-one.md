@@ -157,6 +157,7 @@
 | `F2B_CUBE_API_URL` / `F2B_CUBE_API_TOKEN` | **仅 sandbox** | 同机 loopback；兼容 `CUBE_API_*` |
 | `F2B_CUBE_ENVD_*` | 仅 sandbox | domain / port / 可选 `ENVD_BASE_URL` |
 | `F2B_AUTH_MODE` / `F2B_ADMIN_TOKEN` | sandbox | 见上节防火墙 |
+| `F2B_MAX_CONCURRENT_SANDBOXES` | sandbox | 单机并发硬顶；对齐 capacity 分档；未设不限制 |
 | `DATABASE_URL` | sandbox | 默认文件库路径 |
 
 完整示例见本仓 [`.env.example`](../.env.example) 与 [f2b-sandbox `.env.example`](https://github.com/f2b-dev/f2b-sandbox)。
