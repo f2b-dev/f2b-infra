@@ -66,7 +66,8 @@ docker compose down
 
 - **[docs/all-in-one.md](./docs/all-in-one.md)**
 
-容量与默认模板承诺（并发、规格分档）：见文档站 **单机容量与模板**（f2b-docs `architecture/capacity`）。
+容量与默认模板承诺（并发、规格分档，**含低配入门**）：见文档站 **单机容量与模板**（f2b-docs `architecture/capacity`）。  
+固定远程试验床（香港 Fake）：[docs/hk-test-host.md](./docs/hk-test-host.md)。
 
 ## 非目标
 

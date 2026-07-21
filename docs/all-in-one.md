@@ -29,9 +29,9 @@
 
 | 模式 | 何时用 | 数据面 |
 |------|--------|--------|
-| **A. 开发 / CI** | 笔记本、无 KVM CI | `F2B_SANDBOX_BACKEND=fake` |
-| **B. 单机真数据面** | 一台带 KVM（或官方推荐路径）的云主机 | 本机 Cube 栈 + `F2B_CUBE_API_URL=http://127.0.0.1:<cube-api>` |
-| **C. 企业入门** | 与 B 相同拓扑；可只内网暴露 | 同 B；公网仅 443→web，SDK 走 BFF 或仅内网 :8787 |
+| **A. 开发 / CI / 低配演示** | 笔记本、无 KVM、**2–4G 试验机** | `F2B_SANDBOX_BACKEND=fake` |
+| **B. 单机真数据面** | 一台带 KVM 的云主机（建议 **≥8 GB** 再对外承诺并发） | 本机 Cube 栈 + `F2B_CUBE_API_URL=http://127.0.0.1:<cube-api>` |
+| **C. 企业入门** | 与 B 相同拓扑；**允许 4c/8G 低配**（并发 1–2）或 8c/16G 推荐档 | 同 B；公网仅 443→web，SDK 走 BFF 或仅内网 :8787；容量见 capacity 分档 |
 
 **禁止**：浏览器或客户端 SDK 配置 `CUBE_*` / `envdAccessToken`；CubeAPI 不对公网暴露。
 
