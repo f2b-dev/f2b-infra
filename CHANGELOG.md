@@ -8,6 +8,10 @@
 
 - `scripts/cube-preflight.sh`：KVM/内存预检与 `--accept`
 
+### Fixed
+
+- `install-all-in-one.sh` 页脚 Cube 预检路径：未定义 `$ROOT` → `${F2B_ROOT}/f2b-infra/scripts/...`
+
 ### Changed
 
 - 香港 runbook：`cube-preflight` + Playwright e2e:ui 公网验收说明；install 页脚提示
