@@ -8,6 +8,10 @@
 
 - `scripts/cube-preflight.sh`：KVM/内存预检与 `--accept`
 
+### Added
+
+- GHA `ci`：scripts `bash -n` + 端口/ROOT 守卫
+
 ### Fixed
 
 - `install-all-in-one.sh` 页脚 Cube 预检路径：未定义 `$ROOT` → `${F2B_ROOT}/f2b-infra/scripts/...`

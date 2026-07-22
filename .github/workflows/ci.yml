@@ -1,0 +1,38 @@
+# f2b-infra：脚本语法 + 文档/端口约定守卫（无业务构建）
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  scripts-and-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: bash -n scripts
+        run: |
+          set -euo pipefail
+          for s in scripts/*.sh; do
+            bash -n "$s"
+            echo "ok $s"
+          done
+      - name: 端口与 ROOT 约定（防回归 3000/8787、未定义 ROOT）
+        run: |
+          set -euo pipefail
+          # install 页脚须用 F2B_ROOT，禁止裸 $ROOT
+          if grep -nE '\$ROOT[^/A-Za-z_]|bash \$ROOT/' scripts/install-all-in-one.sh; then
+            echo "install-all-in-one 仍引用未定义 ROOT" >&2
+            exit 1
+          fi
+          # 文档与脚本默认端口应对齐 13200/13287（允许迁移注释提及旧端口）
+          hits=$(grep -RInE 'localhost:3000|http://[^ ]*:8787' \
+            --exclude=CHANGELOG.md --exclude-dir=.git --exclude-dir=node_modules \
+            --exclude-dir=.github . || true)
+          if [[ -n "$hits" ]]; then
+            echo "$hits"
+            echo "发现过时端口 3000/8787（除 CHANGELOG 外）" >&2
+            exit 1
+          fi
+          echo "guards ok"
