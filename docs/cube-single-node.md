@@ -14,7 +14,15 @@
 
 **已选定试验床（2026-07-22）**：香港机具备 KVM 设备与 nested，**当前仍 `backend=fake`**；真 Cube 二进制/栈 **未部署**。升配或另开 ≥8G 节点后再切生产数据面。
 
-验收前探测：
+验收前探测（推荐脚本，等价于下列手工命令）：
+
+```bash
+# 在目标 Linux 主机
+bash /path/to/f2b-infra/scripts/cube-preflight.sh
+# → CUBE_PREFLIGHT_OK mem_ok=0|1
+```
+
+手工等价：
 
 ```bash
 ls -l /dev/kvm
@@ -74,6 +82,16 @@ curl -sS http://127.0.0.1:13287/healthz
 ## 4. 验收清单（真数据面）
 
 在 **该 Linux 主机** 上（或经本机 13287）：
+
+**一键（推荐）**：装栈并配置 `F2B_CUBE_*`、确认 `healthz.backend=cube` 后：
+
+```bash
+# 本机 13287 或指定 URL；需同级或 /opt/f2b 下有 f2b-sandbox checkout
+F2B_SANDBOX_URL=http://127.0.0.1:13287 bash scripts/cube-preflight.sh --accept
+# → CUBE_ACCEPT_OK（内部调 f2b-sandbox smoke:cube-http）
+```
+
+**手工清单**（`--accept` 未覆盖的项仍建议点验）：
 
 | 步骤 | 期望 |
 |------|------|

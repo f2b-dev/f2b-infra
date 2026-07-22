@@ -94,3 +94,13 @@ sudo F2B_MAX_CONCURRENT_SANDBOXES=2 ./scripts/install-all-in-one.sh
 - https://github.com/f2b-dev/f2b-spec  
 
 Apache-2.0
+
+### Cube 装栈
+
+```bash
+bash scripts/cube-preflight.sh          # 预检
+# 装上游 Cube 栈并配置 F2B_CUBE_* 后：
+bash scripts/cube-preflight.sh --accept
+```
+
+详见 [docs/cube-single-node.md](./docs/cube-single-node.md)。

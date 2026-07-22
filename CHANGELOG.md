@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/cube-preflight.sh`：KVM/内存预检与 `--accept`
+
 ### Changed
 
 - 香港 runbook 补充 Fake 全路径 `e2e:bff` 验收命令
