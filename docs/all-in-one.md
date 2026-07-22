@@ -198,3 +198,5 @@ curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:13200/
 - 本地 Fake 双容器：[README](../README.md)、文档站 `architecture/compose`
 - 控制面 ≠ 数据面：`architecture/planes`
 - 容量红线：`architecture/capacity`
+- 隧道预览域名：`architecture/tunnel-preview`（`F2B_TUNNEL_PUBLIC_BASE`）
+- 真 microVM：[cube-single-node.md](./cube-single-node.md)
