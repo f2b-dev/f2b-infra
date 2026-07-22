@@ -89,16 +89,29 @@ curl -sS http://127.0.0.1:13287/healthz
 | timeout reaper | 短 `timeoutMs` 到期回收 |
 | 并发硬顶 | 超限 `CAPACITY_EXCEEDED` |
 
-协议-only（无真 KVM）：
+协议-only（无真 KVM；**不**等于真 microVM 验收）：
 
 ```bash
 cd f2b-sandbox
-pnpm mock:cube &    # CubeAPI + envd mock
+pnpm mock:cube &    # CubeAPI(:18991) + envd(:18992)
+# A) adapter 直连
 F2B_CUBE_API_URL=http://127.0.0.1:18991 \
   F2B_CUBE_ENVD_BASE_URL=http://127.0.0.1:18992 \
   F2B_CUBE_API_TOKEN=mock \
   pnpm smoke:cube
 # → SMOKE_CUBE_OK
+
+# B) 产品 HTTP /v1（backend=cube）
+F2B_AUTH_MODE=off HOST=127.0.0.1 PORT=19791 \
+  DATABASE_URL=file:./data/smoke-cube-http.db \
+  F2B_CUBE_API_URL=http://127.0.0.1:18991 \
+  F2B_CUBE_ENVD_BASE_URL=http://127.0.0.1:18992 \
+  F2B_CUBE_API_TOKEN=mock \
+  pnpm exec tsx src/server.ts &
+# healthz 须 backend=cube
+F2B_SANDBOX_URL=http://127.0.0.1:19791 pnpm smoke:cube-http
+# → SMOKE_CUBE_HTTP_OK
+# 契约 CI（ci:contract）已含 A+B
 ```
 
 ## 5. 诚实展示（产品）
