@@ -10,6 +10,7 @@
 
 ### Changed
 
+- 香港 runbook：`cube-preflight` + Playwright e2e:ui 公网验收说明；install 页脚提示
 - 香港 runbook 补充 Fake 全路径 `e2e:bff` 验收命令
 
 ## [0.1.0] - 2026-07

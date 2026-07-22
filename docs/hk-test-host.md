@@ -80,6 +80,15 @@ systemctl restart f2b-sandbox f2b-web
 
 真 microVM 步骤与验收清单见 **[cube-single-node.md](./cube-single-node.md)**（本机 4G 仅实验；推荐另开 ≥8G）。
 
+本机预检（不装 Cube 也能跑）：
+
+```bash
+bash /opt/f2b/f2b-infra/scripts/cube-preflight.sh
+# 期望：CUBE_PREFLIGHT_OK mem_ok=0（~4G）；有 /dev/kvm 但 backend 仍为 fake 属正常
+# 装上游 Cube 并配置 F2B_CUBE_* 后：
+# bash /opt/f2b/f2b-infra/scripts/cube-preflight.sh --accept   # → CUBE_ACCEPT_OK
+```
+
 ## 安全（测试机）
 
 最小加固（推荐当前默认）：
@@ -110,6 +119,10 @@ ss -lntp | grep 13287   # 应为 127.0.0.1:13287
 # 默认 F2B_WEB_URL=http://127.0.0.1:13200；公网试验：
 F2B_WEB_URL=http://156.238.244.3:13200 bash /path/to/f2b-web/scripts/e2e-bff.sh
 # 期望尾部 E2E_BFF_OK（含模板/用量/密钥/隧道）
+
+# 真浏览器冒烟（可选；需本机 Playwright）
+F2B_WEB_URL=http://156.238.244.3:13200 pnpm --dir /path/to/f2b-web e2e:ui
+# 期望 2 passed（列表徽章诚实 + 创建→详情）
 ```
 
 隧道段依赖本机 `f2b-tunnel`（all-in-one 默认 :8790）。
@@ -118,6 +131,7 @@ F2B_WEB_URL=http://156.238.244.3:13200 bash /path/to/f2b-web/scripts/e2e-bff.sh
 
 - 进程/端口/目录：[all-in-one.md](./all-in-one.md)
 - **真 microVM 单节点**：[cube-single-node.md](./cube-single-node.md)
+- **Cube 预检脚本**：`scripts/cube-preflight.sh`
 - **容量 / 超时 / 保活运维**：[ops-capacity-timeout.md](./ops-capacity-timeout.md)
 - 容量分档：f2b-docs `architecture/capacity`
 - 能力矩阵：f2b-docs `architecture/capability-matrix`

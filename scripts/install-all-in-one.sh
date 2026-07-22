@@ -277,3 +277,4 @@ echo "  沙箱    http://127.0.0.1:13287/healthz（建议 HOST=127.0.0.1 不公�
 echo "  隧道    http://127.0.0.1:8790/healthz（预览 /t/{id}/；BFF /api/tunnels）"
 echo "  约定    见 f2b-infra/docs/all-in-one.md"
 echo "  测试机  见 f2b-infra/docs/hk-test-host.md"
+echo "  Cube    bash $ROOT/scripts/cube-preflight.sh  # 真 microVM 预检；--accept 需 backend=cube"
