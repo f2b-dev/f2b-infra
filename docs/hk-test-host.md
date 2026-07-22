@@ -101,6 +101,19 @@ ss -lntp | grep 13287   # 应为 127.0.0.1:13287
 
 - **勿当生产**；无 Cube 管理密钥写入 env（Fake only）。
 
+
+## Fake 全路径 E2E（同源 BFF）
+
+装栈 `INSTALL_OK` 后，在**任意能访问控制台**的机器上：
+
+```bash
+# 默认 F2B_WEB_URL=http://127.0.0.1:13200；公网试验：
+F2B_WEB_URL=http://156.238.244.3:13200 bash /path/to/f2b-web/scripts/e2e-bff.sh
+# 期望尾部 E2E_BFF_OK（含模板/用量/密钥/隧道）
+```
+
+隧道段依赖本机 `f2b-tunnel`（all-in-one 默认 :8790）。
+
 ## 相关
 
 - 进程/端口/目录：[all-in-one.md](./all-in-one.md)
