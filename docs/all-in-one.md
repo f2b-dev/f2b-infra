@@ -179,7 +179,7 @@ curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:13200/
 ./scripts/smoke.sh
 ```
 
-真数据面另需：在 **该 Linux 主机** 上配置 `F2B_CUBE_*` 后，用 f2b-sandbox 的 create → command → kill 验收（无 KVM 时用 `pnpm mock:cube` + `pnpm smoke:cube` 只验协议）。
+真数据面另需：见 **[cube-single-node.md](./cube-single-node.md)**。在 **该 Linux 主机** 上配置 `F2B_CUBE_*` 后，用 f2b-sandbox 的 create → command → kill 验收（无 KVM 时用 `pnpm mock:cube` + `pnpm smoke:cube` 只验协议）。
 
 ---
 

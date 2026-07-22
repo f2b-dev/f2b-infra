@@ -76,6 +76,9 @@ systemctl restart f2b-sandbox f2b-web
 | 控制面 + **Fake** 公网/远程验收 | 企业「可承诺」并发样板（见 capacity 4c/4G 行） |
 | 可选：nested KVM **单 guest 实验**（内存紧，随时 OOM） | 与客户业务混部 |
 | systemd all-in-one 演练 | 把 `auth=off` + 公网 13287 当生产 |
+| 真数据面联调前准备：`/dev/kvm` 探测 | 在 **未装 Cube 栈** 时把 healthz 写成已连 microVM |
+
+真 microVM 步骤与验收清单见 **[cube-single-node.md](./cube-single-node.md)**（本机 4G 仅实验；推荐另开 ≥8G）。
 
 ## 安全（测试机）
 
@@ -101,6 +104,8 @@ ss -lntp | grep 13287   # 应为 127.0.0.1:13287
 ## 相关
 
 - 进程/端口/目录：[all-in-one.md](./all-in-one.md)
+- **真 microVM 单节点**：[cube-single-node.md](./cube-single-node.md)
 - **容量 / 超时 / 保活运维**：[ops-capacity-timeout.md](./ops-capacity-timeout.md)
 - 容量分档：f2b-docs `architecture/capacity`
+- 能力矩阵：f2b-docs `architecture/capability-matrix`
 - 其它候选机（不推荐作测试床）：润纳农业、snsc-prod-基础2 — 业务负载 / 无可靠 KVM 试验空间
