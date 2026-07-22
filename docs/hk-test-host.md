@@ -101,5 +101,6 @@ ss -lntp | grep 13287   # 应为 127.0.0.1:13287
 ## 相关
 
 - 进程/端口/目录：[all-in-one.md](./all-in-one.md)
+- **容量 / 超时 / 保活运维**：[ops-capacity-timeout.md](./ops-capacity-timeout.md)
 - 容量分档：f2b-docs `architecture/capacity`
 - 其它候选机（不推荐作测试床）：润纳农业、snsc-prod-基础2 — 业务负载 / 无可靠 KVM 试验空间
